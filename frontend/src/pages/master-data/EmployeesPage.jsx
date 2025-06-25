@@ -42,8 +42,8 @@ const EmployeesPage = () => {
   
   const { 
     employees, 
-    departments, 
-    locations,
+    departments = [], 
+    locations = [],
     loading, 
     error: fetchError, 
     fetchEmployees,
@@ -51,6 +51,12 @@ const EmployeesPage = () => {
     updateEmployee, 
     deleteEmployee 
   } = useEmployees();
+  
+  // Debug logs to check data loading
+  useEffect(() => {
+    console.log('Departments:', departments);
+    console.log('Locations:', locations);
+  }, [departments, locations]);
 
   useEffect(() => {
     fetchEmployees();
@@ -299,11 +305,15 @@ const EmployeesPage = () => {
                         required
                       >
                         <option value="">Select Department</option>
-                        {departments.map((dept) => (
-                          <option key={dept.department_id} value={dept.department_id}>
-                            {dept.department_name}
-                          </option>
-                        ))}
+                        {departments && departments.length > 0 ? (
+                          departments.map((dept) => (
+                            <option key={dept.department_id} value={dept.department_id}>
+                              {dept.department_name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No departments available</option>
+                        )}
                       </Field>
                     </div>
                   </div>
@@ -324,11 +334,15 @@ const EmployeesPage = () => {
                         required
                       >
                         <option value="">Select Location</option>
-                        {locations.map((loc) => (
-                          <option key={loc.location_id} value={loc.location_id}>
-                            {loc.location_name}
-                          </option>
-                        ))}
+                        {locations && locations.length > 0 ? (
+                          locations.map((loc) => (
+                            <option key={loc.location_id} value={loc.location_id}>
+                              {loc.location_name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No locations available</option>
+                        )}
                       </Field>
                     </div>
                   </div>

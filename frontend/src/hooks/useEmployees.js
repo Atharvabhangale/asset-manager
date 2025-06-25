@@ -41,19 +41,39 @@ export const useEmployees = () => {
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('Fetching employees with related data...');
+      
+      // Fetch employees with related department and location data
       const { data, error } = await supabase
         .from('employees')
         .select(`
           *,
-          department:department_id (department_name),
-          location:location_id (location_name)
-        `);
+          department:department_id (*),
+          location:location_id (*)
+        `)
+        .order('employee_name', { ascending: true });
 
-      if (error) throw error;
-      setEmployees(data || []);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched employees with related data:', data);
+      
+      // Transform the data to flatten the nested structure for easier access in the UI
+      const transformedData = data.map(emp => ({
+        ...emp,
+        department: emp.department || null,
+        location: emp.location || null
+      }));
+      
+      setEmployees(transformedData || []);
+      return transformedData || [];
     } catch (err) {
-      console.error('Error fetching employees:', err);
+      console.error('Error in fetchEmployees:', err);
       setError(err.message);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -153,9 +173,11 @@ export const useEmployees = () => {
     loading,
     error,
     fetchEmployees,
+    fetchDepartments,
+    fetchLocations,
     createEmployee,
     updateEmployee,
-    deleteEmployee,
+    deleteEmployee
   };
 };
 

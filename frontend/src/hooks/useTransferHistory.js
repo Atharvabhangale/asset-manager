@@ -19,23 +19,23 @@ export const useTransferHistory = () => {
       if (filters.assetId) {
         query = query.eq('asset_id', filters.assetId);
       }
-      if (filters.fromEmployeeId) {
-        query = query.eq('from_employee_id', filters.fromEmployeeId);
+      if (filters.fromEmployeeName) {
+        query = query.eq('from_employee_name', filters.fromEmployeeName);
       }
-      if (filters.toEmployeeId) {
-        query = query.eq('to_employee_id', filters.toEmployeeId);
+      if (filters.toEmployeeName) {
+        query = query.eq('to_employee_name', filters.toEmployeeName);
       }
-      if (filters.fromDepartmentId) {
-        query = query.eq('from_department_id', filters.fromDepartmentId);
+      if (filters.fromDepartmentName) {
+        query = query.eq('from_department_name', filters.fromDepartmentName);
       }
-      if (filters.toDepartmentId) {
-        query = query.eq('to_department_id', filters.toDepartmentId);
+      if (filters.toDepartmentName) {
+        query = query.eq('to_department_name', filters.toDepartmentName);
       }
-      if (filters.fromLocationId) {
-        query = query.eq('from_location_id', filters.fromLocationId);
+      if (filters.fromLocationName) {
+        query = query.eq('from_location_name', filters.fromLocationName);
       }
-      if (filters.toLocationId) {
-        query = query.eq('to_location_id', filters.toLocationId);
+      if (filters.toLocationName) {
+        query = query.eq('to_location_name', filters.toLocationName);
       }
       if (filters.startDate) {
         query = query.gte('transfer_date', `${filters.startDate}T00:00:00`);

@@ -1,8 +1,10 @@
 import React from 'react';
+import { FiEye, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
 const DataTable = ({ 
   columns, 
   data, 
+  onView,
   onEdit, 
   onDelete,
   emptyMessage = 'No data available'
@@ -31,7 +33,7 @@ const DataTable = ({
                     {column.header}
                   </th>
                 ))}
-                {(onEdit || onDelete) && (
+                {(onView || onEdit || onDelete) && (
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -46,23 +48,43 @@ const DataTable = ({
                       {column.render ? column.render(item) : item[column.key]}
                     </td>
                   ))}
-                  {(onEdit || onDelete) && (
+                  {(onView || onEdit || onDelete) && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end space-x-3">
+                        {onView && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onView(item);
+                            }}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="View Details"
+                          >
+                            <FiEye className="h-5 w-5" />
+                          </button>
+                        )}
                         {onEdit && (
                           <button
-                            onClick={() => onEdit(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(item);
+                            }}
                             className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit"
                           >
-                            Edit
+                            <FiEdit2 className="h-5 w-5" />
                           </button>
                         )}
                         {onDelete && (
                           <button
-                            onClick={() => onDelete(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(item);
+                            }}
                             className="text-red-600 hover:text-red-900"
+                            title="Delete"
                           >
-                            Delete
+                            <FiTrash2 className="h-5 w-5" />
                           </button>
                         )}
                       </div>

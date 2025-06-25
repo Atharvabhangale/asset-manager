@@ -30,8 +30,7 @@ export const useDepartments = () => {
       const { data, error } = await supabase
         .from('departments')
         .insert([{
-          department_name: departmentData.name,
-          department_sub_locations: departmentData.subLocations
+          department_name: departmentData.name
         }])
         .select();
 
@@ -52,8 +51,7 @@ export const useDepartments = () => {
       const { data, error } = await supabase
         .from('departments')
         .update({
-          department_name: departmentData.name,
-          department_sub_locations: departmentData.subLocations
+          department_name: departmentData.name
         })
         .eq('department_id', id)
         .select();
@@ -105,6 +103,7 @@ export const useDepartments = () => {
     createDepartment,
     updateDepartment,
     deleteDepartment,
+    fetchDepartments
   };
 };
 

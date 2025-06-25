@@ -14,12 +14,12 @@ const TransferHistoryPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     assetId: '',
-    fromEmployeeId: '',
-    toEmployeeId: '',
-    fromDepartmentId: '',
-    toDepartmentId: '',
-    fromLocationId: '',
-    toLocationId: '',
+    fromEmployeeName: '',
+    toEmployeeName: '',
+    fromDepartmentName: '',
+    toDepartmentName: '',
+    fromLocationName: '',
+    toLocationName: '',
     startDate: '',
     endDate: '',
   });
@@ -32,11 +32,38 @@ const TransferHistoryPage = () => {
     transferAsset 
   } = useTransferHistory();
 
-  const { employees } = useEmployees();
-  const { departments } = useDepartments();
-  const { locations } = useLocations();
+  const { employees, fetchEmployees } = useEmployees();
+  const { departments, fetchDepartments } = useDepartments();
+  const { locations, fetchLocations } = useLocations();
 
+  // Load initial data
   useEffect(() => {
+    console.log('Loading initial data...');
+    const loadData = async () => {
+      try {
+        console.log('Fetching employees...');
+        await fetchEmployees();
+        console.log('Fetching departments...');
+        await fetchDepartments();
+        console.log('Fetching locations...');
+        await fetchLocations();
+      } catch (err) {
+        console.error('Error loading initial data:', err);
+      }
+    };
+    loadData();
+  }, [fetchEmployees, fetchDepartments, fetchLocations]);
+
+  // Debug log when data changes
+  useEffect(() => {
+    console.log('Departments:', departments);
+    console.log('Employees:', employees);
+    console.log('Locations:', locations);
+  }, [departments, employees, locations]);
+
+  // Apply filters when they change
+  useEffect(() => {
+    console.log('Filters changed, fetching transfers with:', filters);
     fetchTransfers(filters);
   }, [filters]);
 
@@ -51,19 +78,23 @@ const TransferHistoryPage = () => {
   const resetFilters = () => {
     setFilters({
       assetId: '',
-      fromEmployeeId: '',
-      toEmployeeId: '',
-      fromDepartmentId: '',
-      toDepartmentId: '',
-      fromLocationId: '',
-      toLocationId: '',
+      fromEmployeeName: '',
+      toEmployeeName: '',
+      fromDepartmentName: '',
+      toDepartmentName: '',
+      fromLocationName: '',
+      toLocationName: '',
       startDate: '',
       endDate: '',
     });
   };
 
   const columns = [
-    { field: 'transfer_id', header: 'Transfer ID' },
+    { 
+      field: 'transfer_id', 
+      header: 'Transfer ID',
+      render: (row) => row.transfer_id || 'N/A'
+    },
     { 
       field: 'asset', 
       header: 'Asset',
@@ -157,15 +188,15 @@ const TransferHistoryPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From Employee</label>
               <select
-                name="fromEmployeeId"
-                value={filters.fromEmployeeId}
+                name="fromEmployeeName"
+                value={filters.fromEmployeeName}
                 onChange={handleFilterChange}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="">All Employees</option>
                 {employees.map(emp => (
-                  <option key={emp.employee_id} value={emp.employee_id}>
-                    {emp.first_name} {emp.last_name}
+                  <option key={emp.employee_id} value={emp.employee_name}>
+                    {emp.employee_name}
                   </option>
                 ))}
               </select>
@@ -173,15 +204,15 @@ const TransferHistoryPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">To Employee</label>
               <select
-                name="toEmployeeId"
-                value={filters.toEmployeeId}
+                name="toEmployeeName"
+                value={filters.toEmployeeName}
                 onChange={handleFilterChange}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="">All Employees</option>
                 {employees.map(emp => (
-                  <option key={emp.employee_id} value={emp.employee_id}>
-                    {emp.first_name} {emp.last_name}
+                  <option key={emp.employee_id} value={emp.employee_name}>
+                    {emp.employee_name}
                   </option>
                 ))}
               </select>
@@ -189,14 +220,14 @@ const TransferHistoryPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From Department</label>
               <select
-                name="fromDepartmentId"
-                value={filters.fromDepartmentId}
+                name="fromDepartmentName"
+                value={filters.fromDepartmentName}
                 onChange={handleFilterChange}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="">All Departments</option>
                 {departments.map(dept => (
-                  <option key={dept.department_id} value={dept.department_id}>
+                  <option key={dept.department_id} value={dept.department_name}>
                     {dept.department_name}
                   </option>
                 ))}
@@ -205,21 +236,53 @@ const TransferHistoryPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">To Department</label>
               <select
-                name="toDepartmentId"
-                value={filters.toDepartmentId}
+                name="toDepartmentName"
+                value={filters.toDepartmentName}
                 onChange={handleFilterChange}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="">All Departments</option>
                 {departments.map(dept => (
-                  <option key={dept.department_id} value={dept.department_id}>
+                  <option key={dept.department_id} value={dept.department_name}>
                     {dept.department_name}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Transfer Date From</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Location</label>
+              <select
+                name="fromLocationName"
+                value={filters.fromLocationName}
+                onChange={handleFilterChange}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="">All Locations</option>
+                {locations.map(loc => (
+                  <option key={loc.location_id} value={loc.location_name}>
+                    {loc.location_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Location</label>
+              <select
+                name="toLocationName"
+                value={filters.toLocationName}
+                onChange={handleFilterChange}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="">All Locations</option>
+                {locations.map(loc => (
+                  <option key={loc.location_id} value={loc.location_name}>
+                    {loc.location_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
                 name="startDate"
@@ -229,7 +292,7 @@ const TransferHistoryPage = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Transfer Date To</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
                 type="date"
                 name="endDate"
@@ -238,28 +301,26 @@ const TransferHistoryPage = () => {
                 className="w-full p-2 border rounded-md"
               />
             </div>
-            <div className="flex items-end">
-              <Button 
-                variant="secondary" 
-                onClick={resetFilters}
-                className="w-full"
-              >
-                Reset Filters
-              </Button>
-            </div>
+          </div>
+          <div className="flex justify-end mt-4 space-x-2">
+            <Button 
+              variant="secondary" 
+              onClick={resetFilters}
+              className="px-4 py-2"
+            >
+              Reset Filters
+            </Button>
           </div>
         </div>
       )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <DataTable
-          data={transfers}
           columns={columns}
+          data={transfers}
           loading={loading}
-          searchFields={['asset_id', 'make', 'model', 'notes']}
-          defaultSortField="transfer_date"
-          defaultSortOrder="desc"
           emptyMessage="No transfer history found"
+          className="w-full"
         />
       </div>
     </div>

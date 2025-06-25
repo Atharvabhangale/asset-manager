@@ -11,6 +11,9 @@ import VendorsPage from './pages/master-data/VendorsPage';
 import EmployeesPage from './pages/master-data/EmployeesPage';
 import AssetsPage from './pages/AssetsPage';
 import TransferHistoryPage from './pages/TransferHistoryPage';
+import DisposedPage from './pages/DisposedPage';
+import SubLocationsPage from './pages/master-data/SubLocationsPage';
+import SectionsPage from './pages/master-data/SectionsPage';
 import AppLayout from './components/layout/AppLayout';
 
 // Public route wrapper
@@ -129,6 +132,30 @@ const AppContent = () => (
       element={
         <PrivateLayout>
           <TransferHistoryPage />
+        </PrivateLayout>
+      }
+    />
+    <Route
+      path="/disposed"
+      element={
+        <PrivateLayout>
+          <DisposedPage />
+        </PrivateLayout>
+      }
+    />
+    <Route
+      path="/sub-locations"
+      element={
+        <PrivateLayout>
+          <SubLocationsPage />
+        </PrivateLayout>
+      }
+    />
+    <Route
+      path="/sections"
+      element={
+        <PrivateLayout>
+          <SectionsPage />
         </PrivateLayout>
       }
     />

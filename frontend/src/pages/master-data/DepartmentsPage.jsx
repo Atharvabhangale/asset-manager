@@ -11,16 +11,15 @@ const departmentSchema = Yup.object().shape({
   name: Yup.string()
     .min(2, 'Department name must be at least 2 characters')
     .max(100, 'Department name must be less than 100 characters')
-    .required('Department name is required'),
-  subLocations: Yup.string()
-    .max(500, 'Sub-locations must be less than 500 characters')
+    .required('Department name is required')
 });
 
 const DepartmentsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [error, setError] = useState('');
-  
+  const [initialValues, setInitialValues] = useState({ name: '' });
+
   const { 
     departments, 
     loading, 
@@ -44,6 +43,9 @@ const DepartmentsPage = () => {
   const handleEditDepartment = (department) => {
     setEditingDepartment(department);
     setError('');
+    setInitialValues({
+      name: department.department_name
+    });
     setIsModalOpen(true);
   };
 
@@ -64,20 +66,8 @@ const DepartmentsPage = () => {
     {
       key: 'department_name',
       header: 'Department Name',
-    },
-    {
-      key: 'department_sub_locations',
-      header: 'Sub-locations',
-      render: (item) => item.department_sub_locations || 'N/A',
     }
   ];
-
-  const initialValues = editingDepartment
-    ? { 
-        name: editingDepartment.department_name || '',
-        subLocations: editingDepartment.department_sub_locations || ''
-      }
-    : { name: '', subLocations: '' };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -176,13 +166,6 @@ const DepartmentsPage = () => {
                   type="text"
                   placeholder="e.g., IT, HR, Finance"
                   required
-                />
-                <FormField
-                  label="Sub-locations (Optional)"
-                  name="subLocations"
-                  type="textarea"
-                  placeholder="Comma-separated list of sub-locations or facilities"
-                  rows={3}
                 />
               </div>
               <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

@@ -9,6 +9,7 @@ import {
   FiLayers, 
   FiPackage,
   FiRepeat,
+  FiTrash2,
   FiSettings,
   FiChevronDown,
   FiChevronRight
@@ -30,9 +31,19 @@ const menuItems = [
         icon: <FiMapPin className="h-5 w-5" />,
       },
       {
+        title: 'Sub-Locations',
+        path: '/sub-locations',
+        icon: <FiMapPin className="h-5 w-5" />,
+      },
+      {
         title: 'Departments',
         path: '/departments',
         icon: <FiUsers className="h-5 w-5" />,
+      },
+      {
+        title: 'Sections',
+        path: '/sections',
+        icon: <FiLayers className="h-5 w-5" />,
       },
       {
         title: 'Employees',
@@ -61,6 +72,11 @@ const menuItems = [
     path: '/transfer-history',
     icon: <FiRepeat className="h-5 w-5" />,
   },
+  {
+    title: 'Disposed',
+    path: '/disposed',
+    icon: <FiTrash2 className="h-5 w-5" />,
+  }
 ];
 
 const SidebarItem = ({ item, isActive, onClick, isChild = false }) => {
@@ -165,7 +181,7 @@ const AppLayout = ({ children }) => {
         } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
       >
         <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Exide IT</h1>
+          <h1 className="text-xl font-bold text-gray-900">Exide</h1>
         </div>
         <nav className="px-2 py-4 space-y-1">
           {menuItems.map((item) => (
@@ -186,9 +202,7 @@ const AppLayout = ({ children }) => {
           <div className="px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
             <div className="flex-1">
               <h1 className="text-xl font-semibold text-gray-900">
-                {menuItems
-                  .flatMap((item) => [item, ...(item.children || [])])
-                  .find((item) => item.path === location.pathname)?.title || 'Dashboard'}
+                It Asset Manager
               </h1>
             </div>
             <div className="flex items-center space-x-4">

@@ -18,7 +18,9 @@ const vendorSchema = Yup.object().shape({
   phone: Yup.string()
     .max(20, 'Phone number must be less than 20 characters'),
   address: Yup.string()
-    .max(500, 'Address must be less than 500 characters')
+    .max(500, 'Address must be less than 500 characters'),
+  remarks: Yup.string()
+    .max(1000, 'Remarks must be less than 1000 characters')
 });
 
 const VendorsPage = () => {
@@ -79,6 +81,13 @@ const VendorsPage = () => {
       key: 'phone',
       header: 'Phone',
       render: (item) => item.phone || 'N/A',
+    },
+    {
+      key: 'remarks',
+      header: 'Remarks',
+      render: (item) => item.remarks ? 
+        (item.remarks.length > 30 ? `${item.remarks.substring(0, 30)}...` : item.remarks) : 
+        'N/A',
     }
   ];
 
@@ -87,13 +96,15 @@ const VendorsPage = () => {
         name: editingVendor.vendor_name || '',
         email: editingVendor.contact_email || '',
         phone: editingVendor.phone || '',
-        address: editingVendor.address || ''
+        address: editingVendor.address || '',
+        remarks: editingVendor.remarks || ''
       }
     : { 
         name: '', 
         email: '', 
         phone: '', 
-        address: '' 
+        address: '',
+        remarks: ''
       };
 
   return (
@@ -229,6 +240,15 @@ const VendorsPage = () => {
                     placeholder="123 Business St, City, Country"
                     rows={3}
                     className="pl-10"
+                  />
+                </div>
+                <div className="relative mt-1">
+                  <FormField
+                    label="Remarks"
+                    name="remarks"
+                    type="textarea"
+                    placeholder="Additional notes or comments about this vendor"
+                    rows={3}
                   />
                 </div>
               </div>

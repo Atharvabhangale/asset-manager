@@ -33,7 +33,8 @@ export const useVendors = () => {
           vendor_name: vendorData.name,
           contact_email: vendorData.email,
           phone: vendorData.phone,
-          address: vendorData.address
+          address: vendorData.address,
+          remarks: vendorData.remarks
         }])
         .select();
 
@@ -57,7 +58,8 @@ export const useVendors = () => {
           vendor_name: vendorData.name,
           contact_email: vendorData.email,
           phone: vendorData.phone,
-          address: vendorData.address
+          address: vendorData.address,
+          remarks: vendorData.remarks
         })
         .eq('vendor_id', id)
         .select();
