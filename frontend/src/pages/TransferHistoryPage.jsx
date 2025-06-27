@@ -52,7 +52,8 @@ const TransferHistoryPage = () => {
       }
     };
     loadData();
-  }, [fetchEmployees, fetchDepartments, fetchLocations]);
+  // Run once on mount to load employees/departments/locations
+  }, []);
 
   // Debug log when data changes
   useEffect(() => {
@@ -63,9 +64,8 @@ const TransferHistoryPage = () => {
 
   // Apply filters when they change
   useEffect(() => {
-    console.log('Filters changed, fetching transfers with:', filters);
     fetchTransfers(filters);
-  }, [filters]);
+  }, [filters, fetchTransfers]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;

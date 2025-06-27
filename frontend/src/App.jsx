@@ -15,6 +15,7 @@ import DisposedPage from './pages/DisposedPage';
 import SubLocationsPage from './pages/master-data/SubLocationsPage';
 import SectionsPage from './pages/master-data/SectionsPage';
 import AppLayout from './components/layout/AppLayout';
+import { PermissionsPage } from './pages/admin';
 
 // Public route wrapper
 const PublicRoute = ({ children }) => {
@@ -23,8 +24,8 @@ const PublicRoute = ({ children }) => {
 };
 
 // Protected route wrapper with layout
-const PrivateLayout = ({ children }) => {
-  const { user, loading } = useAuth();
+const PrivateLayout = ({ children, adminOnly = false }) => {
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -38,7 +39,18 @@ const PrivateLayout = ({ children }) => {
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+  // If adminOnly is required but profile not yet loaded, show spinner
+  if (adminOnly && typeof profile?.role === 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
+  if (adminOnly && profile?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
   return <AppLayout>{children}</AppLayout>;
 };
 
@@ -160,6 +172,17 @@ const AppContent = () => (
       }
     />
 
+    {/* Permissions management (admin only) */}
+    <Route
+      path="/permissions"
+      element={
+        <PrivateLayout adminOnly>
+          <PermissionsPage />
+        </PrivateLayout>
+      }
+    />
+    {/* TEMP: Direct test route for PermissionsPage (no guards) */}
+    <Route path="/permissions-test" element={<PermissionsPage />} />
     {/* 404 - Not Found */}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

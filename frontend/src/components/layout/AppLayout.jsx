@@ -63,19 +63,25 @@ const menuItems = [
     ],
   },
   {
-    title: 'Assets',
-    path: '/assets',
+    title: 'Manage Assets',
     icon: <FiPackage className="h-5 w-5" />,
-  },
-  {
-    title: 'Transfer History',
-    path: '/transfer-history',
-    icon: <FiRepeat className="h-5 w-5" />,
-  },
-  {
-    title: 'Disposed',
-    path: '/disposed',
-    icon: <FiTrash2 className="h-5 w-5" />,
+    children: [
+      {
+        title: 'Assets',
+        path: '/assets',
+        icon: <FiPackage className="h-5 w-5" />,
+      },
+      {
+        title: 'Transfer History',
+        path: '/transfer-history',
+        icon: <FiRepeat className="h-5 w-5" />,
+      },
+      {
+        title: 'Disposed',
+        path: '/disposed',
+        icon: <FiTrash2 className="h-5 w-5" />,
+      }
+    ],
   }
 ];
 
@@ -143,7 +149,7 @@ const SidebarItem = ({ item, isActive, onClick, isChild = false }) => {
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const isActive = (path) => location.pathname === path;
@@ -175,25 +181,42 @@ const AppLayout = ({ children }) => {
       </div>
 
       {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
-      >
-        <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Exide</h1>
-        </div>
-        <nav className="px-2 py-4 space-y-1">
-          {menuItems.map((item) => (
-            <SidebarItem
-              key={item.path || item.title}
-              item={item}
-              isActive={isActive(item.path) || item.children?.some((child) => isActive(child.path))}
-              onClick={() => setMobileMenuOpen(false)}
-            />
-          ))}
-        </nav>
-      </div>
+<div
+  className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform ${
+    mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+  } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
+>
+  <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
+    <h1 className="text-xl font-bold text-gray-900">Exide</h1>
+  </div>
+  <nav className="px-2 py-4 space-y-1">
+    {menuItems.map((item) => (
+      <SidebarItem
+        key={item.path || item.title}
+        item={item}
+        isActive={isActive(item.path) || item.children?.some((child) => isActive(child.path))}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+    ))}
+    {/* Admin-only link for Permissions */}
+    <div className="mt-4 px-4 py-2">
+      {profile?.role === 'admin' && (
+        <Link
+          to="/permissions"
+          onClick={() => setMobileMenuOpen(false)}
+          className="mt-2 flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
+        >
+          <span className="mr-2">
+            <FiSettings className="h-4 w-4" />
+          </span>
+          Permissions (Admin)
+        </Link>
+      )}
+      {/* Nothing is rendered for non-admins */}
+    </div>
+  </nav>
+</div>
+
 
       {/* Main content */}
       <div className="flex-1 flex flex-col lg:pl-64">
