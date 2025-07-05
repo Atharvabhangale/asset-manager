@@ -96,7 +96,8 @@ export const useEmployees = () => {
           phone_no: employeeData.phone_no,
           department_id: employeeData.department_id,
           location_id: employeeData.location_id,
-          role: employeeData.role || 'employee'
+          role: employeeData.role || 'employee',
+          employee_tag: employeeData.employee_tag
         }])
         .select();
 
@@ -122,7 +123,8 @@ export const useEmployees = () => {
           phone_no: employeeData.phone_no,
           department_id: employeeData.department_id,
           location_id: employeeData.location_id,
-          role: employeeData.role || 'employee'
+          role: employeeData.role || 'employee',
+          employee_tag: employeeData.employee_tag
         })
         .eq('employee_id', id)
         .select();

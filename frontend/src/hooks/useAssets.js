@@ -103,12 +103,12 @@ export const useAssets = () => {
         .from('assets')
         .select(`
           *,
-          asset_types(asset_type_name),
-          locations(location_name),
-          departments(department_name),
-          employees(employee_name),
-          sub_locations(sub_location_name),
-          sections(section_name)
+          asset_types(asset_type_id, asset_type_name),
+          locations(location_id, location_name),
+          departments(department_id, department_name),
+          employees(employee_id, employee_name, employee_tag),
+          sub_locations(sub_location_id, sub_location_name),
+          sections(section_id, section_name)
         `)
         .order('asset_id', { ascending: false });
 
@@ -130,6 +130,7 @@ export const useAssets = () => {
         asset_type_id: assetData.assetTypeId,
         make: assetData.make,
         model: assetData.model,
+        hostname: assetData.hostname || null,
         serial_number: assetData.serialNumber,
         status: assetData.status || 'in_stock',
         purchase_date: assetData.purchaseDate || null,
@@ -146,13 +147,13 @@ export const useAssets = () => {
         blank_field_2: assetData.blankField2 || null,
         blank_field_3: assetData.blankField3 || null,
         sub_location_id: assetData.subLocationId || null,
-        section_id: assetData.sectionId || null
+        section_id: assetData.sectionId || null,
+        remarks: assetData.remarks || null
       };
       
       const { data, error } = await supabase
         .from('assets')
         .insert([assetRecord])
-        
 
       if (error) throw error;
       await fetchAssets();
@@ -175,6 +176,7 @@ export const useAssets = () => {
         asset_type_id: assetData.assetTypeId,
         make: assetData.make,
         model: assetData.model,
+        hostname: assetData.hostname || null,
         serial_number: assetData.serialNumber,
         status: assetData.status || 'in_stock',
         purchase_date: assetData.purchaseDate || null,
@@ -191,7 +193,8 @@ export const useAssets = () => {
         blank_field_2: assetData.blankField2 || null,
         blank_field_3: assetData.blankField3 || null,
         sub_location_id: assetData.subLocationId || null,
-        section_id: assetData.sectionId || null
+        section_id: assetData.sectionId || null,
+        remarks: assetData.remarks || null
       };
       
       const { data, error } = await supabase

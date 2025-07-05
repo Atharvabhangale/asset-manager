@@ -92,7 +92,9 @@ const Dashboard = () => {
                   <FiPlus className="mr-2 h-5 w-5" />
                   Add New Asset
                 </button>
-                <button className="inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                <button 
+                  onClick={() => navigate('/reports')}
+                  className="inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                   <FiSettings className="mr-2 h-5 w-5" />
                   View Reports
                 </button>

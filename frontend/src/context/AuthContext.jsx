@@ -72,16 +72,29 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Sign up a new user
-  const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin + '/dashboard',
-      },
-    });
-    if (error) throw error;
-    return data.user;
+  const signUp = async (email, password, userOptions = null) => {
+    if (userOptions) {
+      // Admin invite: create user without logging in as them
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        ...userOptions, // should include user_metadata, role, etc.
+        email_confirm: false
+      });
+      if (error) throw error;
+      return data.user;
+    } else {
+      // Self-signup (should not be used for admin-only flow)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/dashboard',
+        },
+      });
+      if (error) throw error;
+      return data.user;
+    }
   };
 
   // Sign in an existing user

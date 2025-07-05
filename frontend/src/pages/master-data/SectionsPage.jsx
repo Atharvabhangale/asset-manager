@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { FiPlus, FiEdit2, FiTrash2, FiLayers } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiLayers, FiSearch } from 'react-icons/fi';
 import { useSections } from '../../hooks/useSections';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -91,6 +91,16 @@ const SectionsPage = () => {
     }
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredSections = sections.filter(section => {
+    if (!searchTerm) return true;
+    const lower = searchTerm.toLowerCase();
+    return (
+      (section.section_name || '').toLowerCase().includes(lower) ||
+      (section.department_name || '').toLowerCase().includes(lower)
+    );
+  });
+
   const columns = [
     {
       key: 'section',
@@ -137,14 +147,26 @@ const SectionsPage = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Sections</h1>
-        <button
-          onClick={handleAddSection}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add Section
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-3">Sections</h1>
+        <div className="flex items-center gap-2">
+          <div className="relative w-full max-w-xs">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search sections..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            onClick={handleAddSection}
+            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <FiPlus className="mr-2" /> Add Section
+          </button>
+        </div>
       </div>
 
       {(error || fetchError) && (
@@ -155,7 +177,7 @@ const SectionsPage = () => {
 
       <DataTable
         columns={columns}
-        data={sections}
+        data={filteredSections}
         loading={loading}
         emptyMessage="No sections found"
       />

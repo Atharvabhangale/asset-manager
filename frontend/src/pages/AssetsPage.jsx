@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Formik, Form } from 'formik';
 import { useSearchParams } from 'react-router-dom';
 import * as Yup from 'yup';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiFilter, FiInfo, FiCalendar, FiMapPin, FiDownload } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
 const getStatusBadgeClass = (status) => {
   switch (status) {
@@ -44,6 +45,8 @@ const assetSchema = Yup.object().shape({
   serialNumber: Yup.string()
     .required('Serial number is required')
     .max(50, 'Serial number must be less than 50 characters'),
+  hostname: Yup.string()
+    .max(100, 'Hostname must be less than 100 characters'),
   status: Yup.string()
     .required('Status is required')
     .oneOf(statusOptions.map(opt => opt.value), 'Invalid status'),
@@ -62,14 +65,48 @@ const assetSchema = Yup.object().shape({
   blankField1: Yup.string().max(500, 'Field must be less than 500 characters'),
   blankField2: Yup.string().max(500, 'Field must be less than 500 characters'),
   blankField3: Yup.string().max(500, 'Field must be less than 500 characters'),
+  remarks: Yup.string().max(1000, 'Remarks must be less than 1000 characters'),
 });
 
 const AssetsPage = () => {
+  const { profile } = useAuth();
+  const isSuperadmin = profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin';
+  const isElevated = isAdmin || isSuperadmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingAsset, setViewingAsset] = useState(null);
   const [editingAsset, setEditingAsset] = useState(null);
+
+  // Get assets and other values from hook (single declaration)
+  const {
+    assets,
+    assetTypes,
+    locations,
+    departments,
+    employees,
+    subLocations,
+    sections,
+    loading,
+    fetchError,
+    fetchAssets,
+    fetchAssetTypes,
+    fetchLocations,
+    fetchDepartments,
+    fetchEmployees,
+    fetchSubLocations,
+    fetchSections,
+    createAsset,
+    updateAsset,
+    disposeAsset,
+    deleteAsset,
+  } = useAssets();
+  // Alias for legacy code: sectionsData is used throughout
+  const sectionsData = sections;
+// NOTE: Remove ALL other duplicate destructuring of these variables from useAssets() throughout this file. They should only be declared ONCE here at the top of the component.
+  // Only superadmin sees all assets; others see only their location's assets
+  const visibleAssets = isSuperadmin ? assets : (profile?.location_id ? assets.filter(asset => asset.location_id === profile.location_id) : []);
 
   // Helper for initial values, using numbers for ID fields
   const getAssetInitialValues = () => {
@@ -79,6 +116,7 @@ const AssetsPage = () => {
         make: editingAsset.make || '',
         model: editingAsset.model || '',
         serialNumber: editingAsset.serial_number || '',
+        hostname: editingAsset.hostname || '',
         status: editingAsset.status || 'in_stock',
         locationId: editingAsset.location_id || null,
         subLocationId: editingAsset.sub_location_id || null,
@@ -87,6 +125,7 @@ const AssetsPage = () => {
         employeeId: editingAsset.employee_id || null,
         purchaseDate: editingAsset.purchase_date || '',
         warrantyExpiry: editingAsset.warranty_expiry || '',
+        remarks: editingAsset.remarks || '',
         purchaseInvoiceNumber: editingAsset.purchase_invoice_number || '',
         orderNumber: editingAsset.order_number || '',
         sapReference: editingAsset.sap_reference || '',
@@ -102,6 +141,7 @@ const AssetsPage = () => {
       make: '',
       model: '',
       serialNumber: '',
+      hostname: '',
       status: 'in_stock',
       locationId: null,
       subLocationId: null,
@@ -126,6 +166,7 @@ const AssetsPage = () => {
   const [filters, setFilters] = useState({
     searchTerm: '',
     status: 'all',
+    typeId: '',
     make: '',
     model: '',
     locationId: '',
@@ -140,27 +181,6 @@ const AssetsPage = () => {
   const [allSubLocations, setAllSubLocations] = useState([]);
   const [filteredSubLocations, setFilteredSubLocations] = useState([]);
   
-  const { 
-    assets, 
-    assetTypes, 
-    locations, 
-    departments, 
-    employees,
-    subLocations,
-    sections: sectionsData,
-    loading, 
-    error: fetchError, 
-    fetchAssets,
-    fetchAssetTypes,
-    fetchLocations,
-    fetchDepartments,
-    fetchEmployees,
-    fetchSubLocations,
-    fetchSections,
-    createAsset, 
-    updateAsset, 
-    disposeAsset 
-  } = useAssets();
 
   // Filter sections based on selected department
   useEffect(() => {
@@ -280,20 +300,31 @@ const AssetsPage = () => {
   };
   
   // Filter assets based on active filter and search filters
-  const filteredAssets = assets.filter(asset => {
-    // Apply sub-location filter
-    if (filters.subLocationId && asset.sub_location_id?.toString() !== filters.subLocationId) {
+  const filteredAssets = visibleAssets.filter(asset => {
+    // Apply sub-location filter (check both flat and nested properties)
+    if (
+      filters.subLocationId &&
+      asset.sub_location_id?.toString() !== filters.subLocationId &&
+      asset.sub_locations?.sub_location_id?.toString() !== filters.subLocationId
+    ) {
       return false;
     }
-    // Apply section filter
-    if (filters.sectionId && asset.section_id?.toString() !== filters.sectionId) {
+    // Apply section filter (check both flat and nested properties)
+    if (
+      filters.sectionId &&
+      asset.section_id?.toString() !== filters.sectionId &&
+      asset.sections?.section_id?.toString() !== filters.sectionId
+    ) {
       return false;
     }
     // Apply active filter (unassigned)
     if (activeFilter === 'unassigned' && asset.employee_id) {
       return false;
     }
-    
+    // Apply type filter (asset type)
+    if (filters.typeId && asset.asset_type_id?.toString() !== filters.typeId && asset.asset_types?.asset_type_id?.toString() !== filters.typeId) {
+      return false;
+    }
     // Apply status filter
     if (filters.status !== 'all' && asset.status !== filters.status) {
       return false;
@@ -310,21 +341,31 @@ const AssetsPage = () => {
     }
     
     // Apply location filter
-    if (filters.locationId && asset.location_id.toString() !== filters.locationId) {
+    if (filters.locationId &&
+      asset.location_id?.toString() !== filters.locationId &&
+      asset.locations?.location_id?.toString() !== filters.locationId
+    ) {
       return false;
     }
     
     // Apply department filter
-    if (filters.departmentId && asset.department_id.toString() !== filters.departmentId) {
+    if (filters.departmentId &&
+      asset.department_id?.toString() !== filters.departmentId &&
+      asset.departments?.department_id?.toString() !== filters.departmentId
+    ) {
       return false;
     }
     
     // Apply employee filter
     if (filters.employeeId) {
-      if (filters.employeeId === 'unassigned' && asset.employee_id) {
+      if (filters.employeeId === 'unassigned' && (asset.employee_id || asset.employees?.employee_id)) {
         return false;
       }
-      if (filters.employeeId !== 'unassigned' && asset.employee_id?.toString() !== filters.employeeId) {
+      if (
+        filters.employeeId !== 'unassigned' &&
+        asset.employee_id?.toString() !== filters.employeeId &&
+        asset.employees?.employee_id?.toString() !== filters.employeeId
+      ) {
         return false;
       }
     }
@@ -339,7 +380,10 @@ const AssetsPage = () => {
         (asset.asset_types?.asset_type_name || '').toLowerCase().includes(searchLower) ||
         (asset.locations?.location_name || '').toLowerCase().includes(searchLower) ||
         (asset.departments?.department_name || '').toLowerCase().includes(searchLower) ||
-        (asset.employees?.employee_name || '').toLowerCase().includes(searchLower)
+        (asset.employees?.employee_name || '').toLowerCase().includes(searchLower) ||
+        (asset.employees?.employee_tag || '').toLowerCase().includes(searchLower) ||
+        (asset.sub_locations?.sub_location_name || '').toLowerCase().includes(searchLower) ||
+        (asset.sections?.section_name || '').toLowerCase().includes(searchLower)
       );
     }
     
@@ -348,13 +392,19 @@ const AssetsPage = () => {
   
   // Get unique makes and models for dropdowns
   const uniqueMakes = [...new Set(assets.map(asset => asset.make).filter(Boolean))].sort();
-  const uniqueModels = [...new Set(assets.map(asset => asset.model).filter(Boolean))].sort();
+  const uniqueModels = useMemo(() => {
+    if (!filters.make) {
+      return [...new Set(assets.map(a => a.model).filter(Boolean))].sort();
+    }
+    return [...new Set(assets.filter(a => a.make === filters.make).map(a => a.model).filter(Boolean))].sort();
+  }, [assets, filters.make]);
   
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === 'make' ? { model: '' } : {})
     }));
   };
   
@@ -362,6 +412,7 @@ const AssetsPage = () => {
     setFilters({
       searchTerm: '',
       status: 'all',
+      typeId: '',
       make: '',
       model: '',
       locationId: '',
@@ -429,6 +480,11 @@ const AssetsPage = () => {
       header: 'ID',
     },
     {
+      key: 'locations.location_name',
+      header: 'Location',
+      render: (item) => item.locations?.location_name || 'N/A',
+    },
+    {
       key: 'asset_types.asset_type_name',
       header: 'Type',
       render: (item) => item.asset_types?.asset_type_name || 'N/A',
@@ -440,6 +496,10 @@ const AssetsPage = () => {
     {
       key: 'model',
       header: 'Model',
+    },
+    {
+      key: 'hostname',
+      header: 'Hostname',
     },
     {
       key: 'status',
@@ -455,11 +515,6 @@ const AssetsPage = () => {
       header: 'Serial Number',
     },
     {
-      key: 'locations.location_name',
-      header: 'Location',
-      render: (item) => item.locations?.location_name || 'N/A',
-    },
-    {
       key: 'departments.department_name',
       header: 'Department',
       render: (item) => item.departments?.department_name || 'N/A',
@@ -467,8 +522,38 @@ const AssetsPage = () => {
     {
       key: 'employees.employee_name',
       header: 'Assigned To',
-      render: (item) => item.employees?.employee_name || 'Unassigned',
+      render: (item) => {
+        const tag = item.employees?.employee_tag;
+        const name = item.employees?.employee_name;
+        if (tag && name) return `${tag} (${name})`;
+        if (name) return name;
+        return 'Unassigned';
+      },
     },
+    /*{
+      key: 'description',
+      header: 'Description',
+    },
+    {
+      key: 'specification',
+      header: 'Specification',
+    },
+    {
+      key: 'remarks',
+      header: 'Remarks',
+    },
+    {
+      key: 'blankField1',
+      header: 'Custom Field 1',
+    },
+    {
+      key: 'blankField2',
+      header: 'Custom Field 2',
+    },
+    {
+      key: 'blankField3',
+      header: 'Custom Field 3',
+    },*/
   ];
 
   const initialValues = editingAsset
@@ -477,10 +562,7 @@ const AssetsPage = () => {
         make: editingAsset.make,
         model: editingAsset.model,
         serialNumber: editingAsset.serial_number,
-        purchaseDate: editingAsset.purchase_date || '',
-        warrantyExpiry: editingAsset.warranty_expiry || '',
-        purchaseInvoiceNumber: editingAsset.purchase_invoice_number || '',
-        orderNumber: editingAsset.order_number || '',
+        hostname: editingAsset.hostname || '',
         status: editingAsset.status || 'in_stock',
         locationId: editingAsset.location_id.toString(),
         departmentId: editingAsset.department_id.toString(),
@@ -491,12 +573,14 @@ const AssetsPage = () => {
         blankField1: editingAsset.blank_field_1 || '',
         blankField2: editingAsset.blank_field_2 || '',
         blankField3: editingAsset.blank_field_3 || '',
+        remarks: editingAsset.remarks || '',
       }
     : {
         assetTypeId: '',
         make: '',
         model: '',
         serialNumber: '',
+        hostname: '',
         status: 'in_stock',
         purchaseDate: '',
         warrantyExpiry: '',
@@ -511,6 +595,7 @@ const AssetsPage = () => {
         blankField1: '',
         blankField2: '',
         blankField3: '',
+        remarks: '',
       };
 
   return (
@@ -572,6 +657,22 @@ const AssetsPage = () => {
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  name="typeId"
+                  value={filters.typeId}
+                  onChange={handleFilterChange}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">All Types</option>
+                  {assetTypes.map(type => (
+                    <option key={type.asset_type_id} value={type.asset_type_id}>
+                      {type.asset_type_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   name="status"
@@ -612,8 +713,9 @@ const AssetsPage = () => {
                   value={filters.model}
                   onChange={handleFilterChange}
                   className="w-full p-2 border rounded-md"
+                  disabled={!filters.make}
                 >
-                  <option value="">All Models</option>
+                  <option value="">{filters.make ? 'All Models' : 'Select make first'}</option>
                   {uniqueModels.map(model => (
                     <option key={model} value={model}>
                       {model}
@@ -668,7 +770,7 @@ const AssetsPage = () => {
                   <option value="unassigned">Unassigned</option>
                   {employees.map(employee => (
                     <option key={employee.employee_id} value={employee.employee_id}>
-                      {employee.employee_name}
+                      {employee.employee_tag ? `${employee.employee_tag} (${employee.employee_name})` : employee.employee_name}
                     </option>
                   ))}
                 </select>
@@ -797,8 +899,11 @@ const AssetsPage = () => {
           {filters.employeeId && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
               {filters.employeeId === 'unassigned' 
-                ? 'Unassigned' 
-                : `Assigned to: ${employees.find(e => e.employee_id.toString() === filters.employeeId)?.employee_name}`}
+                ? 'Unassigned'
+                : (() => {
+                    const emp = employees.find(e => e.employee_id.toString() === filters.employeeId);
+                    return emp ? `${emp.employee_tag ? `${emp.employee_tag} (` : ''}${emp.employee_name}${emp.employee_tag ? ')' : ''}` : 'Assigned';
+                  })()}
               <button 
                 type="button" 
                 onClick={() => setFilters(prev => ({ ...prev, employeeId: '' }))}
@@ -854,7 +959,7 @@ const AssetsPage = () => {
 
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <DataTable
-          key={assets.map(a => a.asset_id).join(',')}
+          key={filteredAssets.map(a => a.asset_id).join(',')}
           columns={columns}
           data={filteredAssets}
           loading={loading}
@@ -874,27 +979,29 @@ const AssetsPage = () => {
         <Formik
           enableReinitialize
           initialValues={{
-  assetTypeId: editingAsset ? editingAsset.asset_type_id?.toString() : '',
-  make: editingAsset ? editingAsset.make : '',
-  model: editingAsset ? editingAsset.model : '',
-  serialNumber: editingAsset ? editingAsset.serial_number : '',
-  status: editingAsset ? editingAsset.status : 'in_stock',
-  purchaseDate: editingAsset ? editingAsset.purchase_date : '',
-  warrantyExpiry: editingAsset ? editingAsset.warranty_expiry : '',
-  purchaseInvoiceNumber: editingAsset ? editingAsset.purchase_invoice_number : '',
-  orderNumber: editingAsset ? editingAsset.order_number : '',
-  locationId: editingAsset ? editingAsset.location_id?.toString() : '',
-  subLocationId: editingAsset ? editingAsset.sub_location_id?.toString() : '',
-  sectionId: editingAsset ? editingAsset.section_id?.toString() : '',
-  departmentId: editingAsset ? editingAsset.department_id?.toString() : '',
-  employeeId: editingAsset && editingAsset.employee_id ? editingAsset.employee_id.toString() : '',
-  description: editingAsset && editingAsset.description !== null && editingAsset.description !== undefined ? editingAsset.description : '',
-  specification: editingAsset && editingAsset.specification !== null && editingAsset.specification !== undefined ? editingAsset.specification : '',
-  sapReference: editingAsset ? editingAsset.sap_reference : '',
-  blankField1: editingAsset && editingAsset.blank_field_1 !== null && editingAsset.blank_field_1 !== undefined ? editingAsset.blank_field_1 : '',
-  blankField2: editingAsset && editingAsset.blank_field_2 !== null && editingAsset.blank_field_2 !== undefined ? editingAsset.blank_field_2 : '',
-  blankField3: editingAsset && editingAsset.blank_field_3 !== null && editingAsset.blank_field_3 !== undefined ? editingAsset.blank_field_3 : '',
-}}
+            assetTypeId: editingAsset ? editingAsset.asset_type_id?.toString() : '',
+            make: editingAsset ? editingAsset.make : '',
+            model: editingAsset ? editingAsset.model : '',
+            serialNumber: editingAsset ? editingAsset.serial_number : '',
+            hostname: editingAsset ? editingAsset.hostname || '' : '',
+            status: editingAsset ? editingAsset.status : 'in_stock',
+            purchaseDate: editingAsset ? editingAsset.purchase_date : '',
+            warrantyExpiry: editingAsset ? editingAsset.warranty_expiry : '',
+            purchaseInvoiceNumber: editingAsset ? editingAsset.purchase_invoice_number : '',
+            orderNumber: editingAsset ? editingAsset.order_number : '',
+            locationId: editingAsset ? editingAsset.location_id?.toString() : '',
+            subLocationId: editingAsset ? editingAsset.sub_location_id?.toString() : '',
+            sectionId: editingAsset ? editingAsset.section_id?.toString() : '',
+            departmentId: editingAsset ? editingAsset.department_id?.toString() : '',
+            employeeId: editingAsset && editingAsset.employee_id ? editingAsset.employee_id.toString() : '',
+            description: editingAsset && editingAsset.description !== null && editingAsset.description !== undefined ? editingAsset.description : '',
+            specification: editingAsset && editingAsset.specification !== null && editingAsset.specification !== undefined ? editingAsset.specification : '',
+            sapReference: editingAsset ? editingAsset.sap_reference : '',
+            blankField1: editingAsset && editingAsset.blank_field_1 !== null && editingAsset.blank_field_1 !== undefined ? editingAsset.blank_field_1 : '',
+            blankField2: editingAsset && editingAsset.blank_field_2 !== null && editingAsset.blank_field_2 !== undefined ? editingAsset.blank_field_2 : '',
+            blankField3: editingAsset && editingAsset.blank_field_3 !== null && editingAsset.blank_field_3 !== undefined ? editingAsset.blank_field_3 : '',
+            remarks: editingAsset && editingAsset.remarks !== null && editingAsset.remarks !== undefined ? editingAsset.remarks : '',
+          }}
           validationSchema={assetSchema}
           onSubmit={async (values, { setSubmitting, resetForm }) => {
             try {
@@ -906,6 +1013,7 @@ const AssetsPage = () => {
                 make: values.make,
                 model: values.model,
                 serialNumber: values.serialNumber,
+                hostname: values.hostname,
                 status: values.status,
                 purchaseDate: values.purchaseDate || null,
                 warrantyExpiry: values.warrantyExpiry || null,
@@ -920,6 +1028,7 @@ const AssetsPage = () => {
                 blankField1: values.blankField1,
                 blankField2: values.blankField2,
                 blankField3: values.blankField3,
+                remarks: values.remarks,
                 subLocationId: values.subLocationId ? parseInt(values.subLocationId, 10) : null,
                 sectionId: values.sectionId ? parseInt(values.sectionId, 10) : null,
               };
@@ -1001,7 +1110,7 @@ const AssetsPage = () => {
                 </div>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Basic Information</h3>
                 </div>
@@ -1034,6 +1143,13 @@ const AssetsPage = () => {
                   type="text"
                   placeholder="e.g., XPS 15, ThinkPad X1"
                   required
+                />
+                
+                <FormField
+                  label="Hostname"
+                  name="hostname"
+                  type="text"
+                  placeholder="e.g., LAPTOP-12345"
                 />
                 
                 <FormField
@@ -1094,19 +1210,6 @@ const AssetsPage = () => {
                   <h3 className="text-lg font-medium text-gray-900 mb-3 mt-6">Assignment</h3>
                 </div>
                 
-                <FormField
-                  label="Location"
-                  name="locationId"
-                  as="select"
-                >
-                  <option value={null}>Select a location</option>
-                  {locations.map((loc) => (
-                    <option key={loc.location_id} value={loc.location_id}>
-                      {loc.location_name}
-                    </option>
-                  ))}
-                </FormField>
-
                 <FormField
                   label="Sub-Location"
                   name="subLocationId"
@@ -1171,7 +1274,18 @@ const AssetsPage = () => {
                   as="textarea"
                   rows={3}
                   placeholder="Asset description"
+                  className="mb-4"
                 />
+                {isElevated && (
+                <FormField
+                  label="Remarks"
+                  name="remarks"
+                  as="textarea"
+                  rows={3}
+                  placeholder="Remarks"
+                  className="mb-4"
+                />
+                )}
                 
                 <FormField
                   label="Specifications"
@@ -1254,7 +1368,7 @@ const AssetsPage = () => {
                       Basic Information
                     </dt>
                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <p className="text-xs text-gray-500">Serial Number</p>
                           <p>{viewingAsset.serial_number || 'N/A'}</p>
@@ -1262,6 +1376,10 @@ const AssetsPage = () => {
                         <div>
                           <p className="text-xs text-gray-500">SAP Reference</p>
                           <p>{viewingAsset.sap_reference || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Hostname</p>
+                          <p>{viewingAsset.hostname || 'N/A'}</p>
                         </div>
                       </div>
                     </dd>
@@ -1338,23 +1456,31 @@ const AssetsPage = () => {
                       </dd>
                     </div>
                   )}
-                  
-                  {(viewingAsset.blankField1 || viewingAsset.blankField2 || viewingAsset.blankField3) && (
+                  {isElevated && viewingAsset.remarks && (
                     <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">Additional Information</dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 space-y-2">
-                        {viewingAsset.blankField1 && (
-                          <p><span className="font-medium">Custom Field 1:</span> {viewingAsset.blankField1}</p>
-                        )}
-                        {viewingAsset.blankField2 && (
-                          <p><span className="font-medium">Custom Field 2:</span> {viewingAsset.blankField2}</p>
-                        )}
-                        {viewingAsset.blankField3 && (
-                          <p><span className="font-medium">Custom Field 3:</span> {viewingAsset.blankField3}</p>
-                        )}
+                      <dt className="text-sm font-medium text-gray-500">Remarks</dt>
+                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 whitespace-pre-line">
+                        {viewingAsset.remarks}
                       </dd>
                     </div>
                   )}
+                  
+                  {(viewingAsset.blank_field_1 || viewingAsset.blank_field_2 || viewingAsset.blank_field_3) && (
+  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+    <dt className="text-sm font-medium text-gray-500">Additional Information</dt>
+    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 space-y-2">
+      {viewingAsset.blank_field_1 && (
+        <p><span className="font-medium">Custom Field 1:</span> {viewingAsset.blank_field_1}</p>
+      )}
+      {viewingAsset.blank_field_2 && (
+        <p><span className="font-medium">Custom Field 2:</span> {viewingAsset.blank_field_2}</p>
+      )}
+      {viewingAsset.blank_field_3 && (
+        <p><span className="font-medium">Custom Field 3:</span> {viewingAsset.blank_field_3}</p>
+      )}
+    </dd>
+  </div>
+)}
                 </dl>
               </div>
             </div>

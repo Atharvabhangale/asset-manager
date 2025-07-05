@@ -12,10 +12,11 @@ import {
   FiTrash2,
   FiSettings,
   FiChevronDown,
-  FiChevronRight
+  FiChevronRight,
+  FiUser
 } from 'react-icons/fi';
 
-const menuItems = [
+const getMenuItems = (profile) => [
   {
     title: 'Dashboard',
     path: '/dashboard',
@@ -82,7 +83,32 @@ const menuItems = [
         icon: <FiTrash2 className="h-5 w-5" />,
       }
     ],
-  }
+  },
+  // Admin dropdown, visible to admin and superadmin
+  ...(profile?.role === 'admin' || profile?.role === 'superadmin' ? [
+    {
+      title: 'Admin',
+      icon: <FiUsers className="h-5 w-5" />,
+      children: [
+        {
+          title: 'Permissions',
+          path: '/permissions',
+          icon: <FiSettings className="h-5 w-5" />,
+        },
+        {
+          title: 'Profiles',
+          path: '/profiles',
+          icon: <FiUser className="h-5 w-5" />,
+        },
+        {
+          title: 'Add User',
+          path: '/register',
+          icon: <FiUsers className="h-5 w-5" />,
+        },
+        // Add more admin-only pages here as needed
+      ],
+    }
+  ] : []),
 ];
 
 const SidebarItem = ({ item, isActive, onClick, isChild = false }) => {
@@ -190,7 +216,7 @@ const AppLayout = ({ children }) => {
     <h1 className="text-xl font-bold text-gray-900">Exide</h1>
   </div>
   <nav className="px-2 py-4 space-y-1">
-    {menuItems.map((item) => (
+    {getMenuItems(profile).map((item) => (
       <SidebarItem
         key={item.path || item.title}
         item={item}
@@ -198,22 +224,7 @@ const AppLayout = ({ children }) => {
         onClick={() => setMobileMenuOpen(false)}
       />
     ))}
-    {/* Admin-only link for Permissions */}
-    <div className="mt-4 px-4 py-2">
-      {profile?.role === 'admin' && (
-        <Link
-          to="/permissions"
-          onClick={() => setMobileMenuOpen(false)}
-          className="mt-2 flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
-        >
-          <span className="mr-2">
-            <FiSettings className="h-4 w-4" />
-          </span>
-          Permissions (Admin)
-        </Link>
-      )}
-      {/* Nothing is rendered for non-admins */}
-    </div>
+
   </nav>
 </div>
 

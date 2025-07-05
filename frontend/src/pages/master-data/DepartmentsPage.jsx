@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import { useDepartments } from '../../hooks/useDepartments';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -62,6 +62,12 @@ const DepartmentsPage = () => {
     setEditingDepartment(null);
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredDepartments = departments.filter(dept => {
+    if (!searchTerm) return true;
+    return (dept.department_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   const columns = [
     {
       key: 'department_name',
@@ -71,16 +77,28 @@ const DepartmentsPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Departments</h1>
-        <button
-          type="button"
-          onClick={handleAddDepartment}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <FiPlus className="-ml-1 mr-2 h-5 w-5" />
-          Add Department
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 mb-3">Departments</h1>
+        <div className="flex items-center gap-2">
+          <div className="relative w-full max-w-xs">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search departments..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddDepartment}
+            className="ml-auto inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <FiPlus className="-ml-1 mr-2 h-5 w-5" />
+            Add Department
+          </button>
+        </div>
       </div>
 
       {fetchError && (
@@ -100,9 +118,9 @@ const DepartmentsPage = () => {
 
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <DataTable
-          key={departments.map(d => d.department_id).join(',')}
+          key={filteredDepartments.map(d => d.department_id).join(',')}
           columns={columns}
-          data={departments}
+          data={filteredDepartments}
           loading={loading}
           onEdit={handleEditDepartment}
           onDelete={handleDeleteDepartment}

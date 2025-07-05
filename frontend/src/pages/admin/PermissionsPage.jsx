@@ -21,7 +21,7 @@ const PermissionsPage = () => {
   // Check if current user is admin, if not redirect to dashboard
   useEffect(() => {
     if (typeof profile?.role === 'undefined') return; // wait for profile
-    if (profile?.role !== 'admin') {
+    if (!['admin', 'superadmin'].includes(profile.role)) {
       navigate('/dashboard');
     }
   }, [profile, navigate]);
@@ -65,7 +65,7 @@ const PermissionsPage = () => {
     );
   }
 
-  if (profile?.role !== 'admin') {
+  if (!['admin','superadmin'].includes(profile?.role)) {
     return null;
   }
 

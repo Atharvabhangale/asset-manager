@@ -10,7 +10,8 @@ import {
   FiUser, 
   FiBriefcase, 
   FiMapPin,
-  FiShield
+  FiShield,
+  FiSearch
 } from 'react-icons/fi';
 import { useEmployees } from '../../hooks/useEmployees';
 import DataTable from '../../components/DataTable';
@@ -32,7 +33,11 @@ const employeeSchema = Yup.object().shape({
   location_id: Yup.string().required('Location is required'),
   role: Yup.string()
     .oneOf(['admin', 'manager', 'employee'], 'Invalid role')
-    .required('Role is required')
+    .required('Role is required'),
+  employee_tag: Yup.string()
+    .max(5, 'Employee tag must be less than 5 characters')
+    .matches(/[A-Za-z0-9]{5}/, 'Employee tag must be alphanumeric and exactly 5 characters')
+    .required('Employee tag is required')
 });
 
 const EmployeesPage = () => {
@@ -40,6 +45,8 @@ const EmployeesPage = () => {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [error, setError] = useState('');
   
+  const [searchTerm, setSearchTerm] = useState('');
+
   const { 
     employees, 
     departments = [], 
@@ -87,7 +94,24 @@ const EmployeesPage = () => {
     setEditingEmployee(null);
   };
 
+  const filteredEmployees = employees.filter(emp => {
+    if (!searchTerm) return true;
+    const lower = searchTerm.toLowerCase();
+    return (
+      (emp.employee_name || '').toLowerCase().includes(lower) ||
+      (emp.employee_tag || '').toLowerCase().includes(lower) ||
+      (emp.email || '').toLowerCase().includes(lower) ||
+      (emp.role || '').toLowerCase().includes(lower) ||
+      (emp.department?.department_name || '').toLowerCase().includes(lower) ||
+      (emp.location?.location_name || '').toLowerCase().includes(lower)
+    );
+  });
+
   const columns = [
+    {
+      key: 'employee_tag',
+      header: 'Employee tag',
+    },
     {
       key: 'employee_name',
       header: 'Name',
@@ -130,7 +154,8 @@ const EmployeesPage = () => {
         phone_no: editingEmployee.phone_no || '',
         department_id: editingEmployee.department_id || '',
         location_id: editingEmployee.location_id || '',
-        role: editingEmployee.role || 'employee'
+        role: editingEmployee.role || 'employee',
+        employee_tag: editingEmployee.employee_tag || ''
       }
     : { 
         employee_name: '', 
@@ -138,7 +163,8 @@ const EmployeesPage = () => {
         phone_no: '', 
         department_id: '',
         location_id: '',
-        role: 'employee'
+        role: 'employee',
+        employee_tag: ''
       };
 
   return (
@@ -170,11 +196,24 @@ const EmployeesPage = () => {
         </div>
       )}
 
+      <div className="mb-4 flex items-center">
+        <div className="relative w-full max-w-sm">
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search employees..."
+            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <DataTable
-          key={employees.map(e => e.employee_id).join(',')}
+          key={filteredEmployees.map(e => e.employee_id).join(',')}
           columns={columns}
-          data={employees}
+          data={filteredEmployees}
           loading={loading}
           onEdit={handleEditEmployee}
           onDelete={handleDeleteEmployee}
@@ -284,6 +323,24 @@ const EmployeesPage = () => {
                       name="phone_no"
                       placeholder="+1 (555) 123-4567"
                       className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                <div className="relative mb-4">
+                  <label htmlFor="employee_tag" className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee tag
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <Field
+                      type="text"
+                      id="employee_tag"
+                      name="employee_tag"
+                      placeholder="ABCDE"
+                      className="focus:ring-blue-500 focus:border-blue-500 block w-full pr-3 py-2 sm:text-sm border border-gray-300 rounded-md"
+                      maxLength={5}
+                      pattern="[A-Za-z0-9]{5}"
+                      required
                     />
                   </div>
                 </div>

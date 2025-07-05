@@ -12,10 +12,12 @@ import EmployeesPage from './pages/master-data/EmployeesPage';
 import AssetsPage from './pages/AssetsPage';
 import TransferHistoryPage from './pages/TransferHistoryPage';
 import DisposedPage from './pages/DisposedPage';
+import ProfilesPage from './pages/ProfilesPage';
 import SubLocationsPage from './pages/master-data/SubLocationsPage';
 import SectionsPage from './pages/master-data/SectionsPage';
 import AppLayout from './components/layout/AppLayout';
 import { PermissionsPage } from './pages/admin';
+import ReportsPage from './pages/ReportsPage';
 
 // Public route wrapper
 const PublicRoute = ({ children }) => {
@@ -39,6 +41,8 @@ const PrivateLayout = ({ children, adminOnly = false }) => {
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+  const sessionRole = (user?.user_metadata?.role || '').toString().toLowerCase();
+  const normalizedRole = (profile?.role || sessionRole).toString().toLowerCase();
   // If adminOnly is required but profile not yet loaded, show spinner
   if (adminOnly && typeof profile?.role === 'undefined') {
     return (
@@ -48,7 +52,8 @@ const PrivateLayout = ({ children, adminOnly = false }) => {
     );
   }
 
-  if (adminOnly && profile?.role !== 'admin') {
+  const isElevated = !['', 'user', 'master'].includes(normalizedRole);
+  if (adminOnly && !isElevated) {
     return <Navigate to="/dashboard" replace />;
   }
   return <AppLayout>{children}</AppLayout>;
@@ -68,9 +73,9 @@ const AppContent = () => (
     <Route
       path="/register"
       element={
-        <PublicRoute>
+        <PrivateLayout adminOnly>
           <Register />
-        </PublicRoute>
+        </PrivateLayout>
       }
     />
 
@@ -168,6 +173,25 @@ const AppContent = () => (
       element={
         <PrivateLayout>
           <SectionsPage />
+        </PrivateLayout>
+      }
+    />
+
+    {/* Reports page (protected) */}
+    <Route
+      path="/reports"
+      element={
+        <PrivateLayout>
+          <ReportsPage />
+        </PrivateLayout>
+      }
+    />
+    {/* Profiles page (admin only) */}
+    <Route
+      path="/profiles"
+      element={
+        <PrivateLayout adminOnly>
+          <ProfilesPage />
         </PrivateLayout>
       }
     />

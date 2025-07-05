@@ -24,6 +24,10 @@ const DataTable = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {/* Empty header for view button column if onView is provided */}
+                {onView && (
+                  <th className="px-6 py-3" />
+                )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
@@ -43,26 +47,31 @@ const DataTable = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {data.map((item, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50">
+                  {/* View button on the far left */}
+                  {onView && (
+                    <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onView(item);
+                        }}
+                        className="text-gray-600 hover:text-gray-900"
+                        title="View Details"
+                      >
+                        <FiEye className="h-5 w-5" />
+                      </button>
+                    </td>
+                  )}
+                  {/* Render all columns as usual */}
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 whitespace-nowrap">
                       {column.render ? column.render(item) : item[column.key]}
                     </td>
                   ))}
-                  {(onView || onEdit || onDelete) && (
+                  {/* Only show edit/delete on the right */}
+                  {(onEdit || onDelete) && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
-                        {onView && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onView(item);
-                            }}
-                            className="text-gray-600 hover:text-gray-900"
-                            title="View Details"
-                          >
-                            <FiEye className="h-5 w-5" />
-                          </button>
-                        )}
                         {onEdit && (
                           <button
                             onClick={(e) => {

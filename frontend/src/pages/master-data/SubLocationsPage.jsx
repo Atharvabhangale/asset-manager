@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { FiPlus, FiEdit2, FiTrash2, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiMapPin, FiSearch } from 'react-icons/fi';
 import { useSubLocations } from '../../hooks/useSubLocations';
 import DataTable from '../../components/DataTable';
 import Modal from '../../components/Modal';
@@ -14,6 +14,8 @@ const subLocationSchema = Yup.object().shape({
     .required('Sub-location name is required'),
   location_id: Yup.string().required('Location is required')
 });
+
+import { useAuth } from '../../context/AuthContext';
 
 const SubLocationsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,6 +31,21 @@ const SubLocationsPage = () => {
     updateSubLocation,
     deleteSubLocation
   } = useSubLocations();
+
+  // Location-based filtering logic
+  const { profile } = useAuth();
+  const isSuperadmin = profile?.role === 'superadmin';
+  // Only superadmin sees all subLocations; others see only their location's subLocations
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredSubLocations = (isSuperadmin ? subLocations : (profile?.location_id ? subLocations.filter(sl => sl.location_id === profile.location_id) : []))
+    .filter(sl => {
+      if (!searchTerm) return true;
+      const lower = searchTerm.toLowerCase();
+      return (
+        (sl.sub_location_name || '').toLowerCase().includes(lower) ||
+        (sl.location_name || '').toLowerCase().includes(lower)
+      );
+    });
 
 
   const [initialValues, setInitialValues] = useState({ 
@@ -130,14 +147,26 @@ const SubLocationsPage = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Sub-Locations</h1>
-        <button
-          onClick={handleAddSubLocation}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add Sub-Location
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-3">Sub-Locations</h1>
+        <div className="flex items-center gap-2">
+          <div className="relative w-full max-w-xs">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search sub-locations..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            onClick={handleAddSubLocation}
+            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <FiPlus className="mr-2" /> Add Sub-Location
+          </button>
+        </div>
       </div>
 
       {(error || fetchError) && (
@@ -148,7 +177,7 @@ const SubLocationsPage = () => {
 
       <DataTable
         columns={columns}
-        data={subLocations}
+        data={filteredSubLocations}
         loading={loading}
         emptyMessage="No sub-locations found"
       />

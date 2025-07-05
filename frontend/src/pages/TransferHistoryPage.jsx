@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiRefreshCw, FiFilter, FiPlus } from 'react-icons/fi';
+import { FiRefreshCw, FiFilter, FiPlus, FiSearch } from 'react-icons/fi';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
@@ -89,6 +89,23 @@ const TransferHistoryPage = () => {
     });
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredTransfers = transfers.filter(row => {
+    if (!searchTerm) return true;
+    const lower = searchTerm.toLowerCase();
+    return (
+      (row.make || '').toLowerCase().includes(lower) ||
+      (row.model || '').toLowerCase().includes(lower) ||
+      (row.asset_id || '').toString().toLowerCase().includes(lower) ||
+      (row.from_employee_name || '').toLowerCase().includes(lower) ||
+      (row.to_employee_name || '').toLowerCase().includes(lower) ||
+      (row.from_department_name || '').toLowerCase().includes(lower) ||
+      (row.to_department_name || '').toLowerCase().includes(lower) ||
+      (row.from_location_name || '').toLowerCase().includes(lower) ||
+      (row.to_location_name || '').toLowerCase().includes(lower)
+    );
+  });
+
   const columns = [
     { 
       field: 'transfer_id', 
@@ -147,18 +164,29 @@ const TransferHistoryPage = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Transfer History</h1>
-        <div className="flex space-x-3">
-          <Button 
-            variant="secondary" 
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative w-full max-w-xs">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search transfers..."
+              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <Button
+            icon={<FiFilter />}
             onClick={() => setShowFilters(!showFilters)}
-            icon={<FiFilter className="mr-2" />}
+            className="mr-2"
+            variant={showFilters ? 'primary' : 'outline'}
           >
-            {showFilters ? 'Hide Filters' : 'Filters'}
+            Filters
           </Button>
-          <Button 
-            onClick={fetchTransfers} 
-            loading={loading}
-            icon={<FiRefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''}`} />}
+          <Button
+            icon={<FiRefreshCw />}
+            onClick={fetchTransfers}
+            variant="outline"
           >
             Refresh
           </Button>
@@ -317,9 +345,9 @@ const TransferHistoryPage = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <DataTable
           columns={columns}
-          data={transfers}
+          data={filteredTransfers}
           loading={loading}
-          emptyMessage="No transfer history found"
+          emptyMessage="No transfer history found."
           className="w-full"
         />
       </div>
