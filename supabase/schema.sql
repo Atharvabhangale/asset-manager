@@ -61,14 +61,39 @@ CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  v_username text :=
+      coalesce(new.raw_user_meta_data ->> 'username',
+               split_part(new.email, '@', 1));      -- derive from email
+
+  v_fullname text := v_username;                     -- initial full_name
+
+  v_email    text :=
+      coalesce(new.raw_user_meta_data ->> 'email',
+               new.email);                           -- fallback to column
+
+  v_role     text :=
+      coalesce(new.raw_app_meta_data  ->> 'role',
+               'user');                              -- default
+
 begin
-  insert into public.profiles (id, full_name, avatar_url, role)
-  values (
-    new.id, 
-    new.raw_user_meta_data->>'full_name', 
-    new.raw_user_meta_data->>'avatar_url',
-    coalesce((new.raw_user_meta_data->>'role')::text, 'user')
-  );
+  insert into public.profiles (id,
+                               username,
+                               full_name,
+                               email,
+                               role,
+                               avatar_url,
+                               website,
+                               updated_at)
+  values ( new.id,
+           v_username,
+           v_fullname,
+           v_email,
+           v_role,
+           new.raw_user_meta_data ->> 'avatar_url',
+           new.raw_user_meta_data ->> 'website',
+           now()
+         );
   return new;
 end;
 $$;
@@ -107,6 +132,18 @@ $$;
 
 
 ALTER FUNCTION "public"."is_admin_or_manager"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_elevated"("uid" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    AS $$
+  select role in ('admin','superadmin')
+  from public.profiles
+  where id = uid;
+$$;
+
+
+ALTER FUNCTION "public"."is_elevated"("uid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."is_manager"() RETURNS boolean
@@ -374,6 +411,8 @@ CREATE TABLE IF NOT EXISTS "public"."assets" (
     "status" character varying(20) DEFAULT 'in_stock'::character varying NOT NULL,
     "sub_location_id" integer,
     "section_id" integer,
+    "remarks" "text",
+    "hostname" "text",
     CONSTRAINT "assets_status_check" CHECK ((("status")::"text" = ANY ((ARRAY['in_stock'::character varying, 'assigned'::character varying, 'in_maintenance'::character varying, 'retired'::character varying, 'disposed'::character varying])::"text"[])))
 );
 
@@ -457,6 +496,8 @@ CREATE TABLE IF NOT EXISTS "public"."employees" (
     "location_id" integer NOT NULL,
     "phone_no" character varying(20),
     "role" character varying(20) NOT NULL,
+    "employee_tag" character varying(5) NOT NULL,
+    CONSTRAINT "employees_employee_tag_check" CHECK ((("employee_tag" IS NULL) OR (("employee_tag")::"text" ~ '^[A-Za-z0-9]{5}$'::"text"))),
     CONSTRAINT "employees_role_check" CHECK ((("role")::"text" = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'employee'::character varying])::"text"[])))
 );
 
@@ -513,7 +554,9 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "avatar_url" "text",
     "website" "text",
     "role" "text" DEFAULT 'user'::"text" NOT NULL,
-    CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['user'::"text", 'master'::"text", 'admin'::"text"]))),
+    "email" "text",
+    "location_id" bigint,
+    CONSTRAINT "profiles_role_check" CHECK (("role" = ANY (ARRAY['user'::"text", 'master'::"text", 'admin'::"text", 'superadmin'::"text"]))),
     CONSTRAINT "username_length" CHECK (("char_length"("username") >= 3))
 );
 
@@ -864,6 +907,11 @@ ALTER TABLE ONLY "public"."asset_types"
 
 
 ALTER TABLE ONLY "public"."assets"
+    ADD CONSTRAINT "assets_hostname_key" UNIQUE ("hostname");
+
+
+
+ALTER TABLE ONLY "public"."assets"
     ADD CONSTRAINT "assets_pkey" PRIMARY KEY ("asset_id");
 
 
@@ -894,6 +942,11 @@ ALTER TABLE ONLY "public"."disposed"
 
 
 ALTER TABLE ONLY "public"."employees"
+    ADD CONSTRAINT "employee_tag_unique" UNIQUE ("employee_tag");
+
+
+
+ALTER TABLE ONLY "public"."employees"
     ADD CONSTRAINT "employees_email_key" UNIQUE ("email");
 
 
@@ -905,6 +958,11 @@ ALTER TABLE ONLY "public"."employees"
 
 ALTER TABLE ONLY "public"."locations"
     ADD CONSTRAINT "locations_pkey" PRIMARY KEY ("location_id");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_email_key" UNIQUE ("email");
 
 
 
@@ -1040,6 +1098,11 @@ ALTER TABLE ONLY "public"."employees"
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("location_id");
 
 
 
@@ -1245,6 +1308,10 @@ CREATE POLICY "Admin/master or permitted user can modify" ON "public"."vendors" 
 
 
 
+CREATE POLICY "Admins & Superadmins can view all profiles" ON "public"."profiles" FOR SELECT USING (((("current_setting"('request.jwt.claims'::"text", true))::json ->> 'role'::"text") = ANY (ARRAY['admin'::"text", 'superadmin'::"text"])));
+
+
+
 CREATE POLICY "Admins can manage permissions" ON "public"."table_permissions" USING ((EXISTS ( SELECT 1
    FROM "public"."profiles" "p"
   WHERE (("p"."id" = "auth"."uid"()) AND ("p"."role" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -1254,10 +1321,6 @@ CREATE POLICY "Admins can manage permissions" ON "public"."table_permissions" US
 
 
 CREATE POLICY "Admins can read all profiles" ON "public"."profiles" FOR SELECT USING ("public"."is_admin"("auth"."uid"()));
-
-
-
-CREATE POLICY "Allow admin to manage profiles" ON "public"."profiles" USING ("public"."is_admin"("auth"."uid"())) WITH CHECK ("public"."is_admin"("auth"."uid"()));
 
 
 
@@ -1332,6 +1395,86 @@ CREATE POLICY "Assets editors can log transfers" ON "public"."transfer_history" 
   WHERE (("p"."id" = "auth"."uid"()) AND ("p"."role" = ANY (ARRAY['admin'::"text", 'master'::"text"]))))) OR (EXISTS ( SELECT 1
    FROM "public"."table_permissions" "tp"
   WHERE (("tp"."user_id" = "auth"."uid"()) AND ("tp"."table_name" = 'assets'::"text") AND ("tp"."permission" = ANY (ARRAY['write'::"text", 'all'::"text"])))))));
+
+
+
+CREATE POLICY "Elevated users can manage all profiles" ON "public"."profiles" USING ("public"."is_elevated"("auth"."uid"()));
+
+
+
+CREATE POLICY "Elevated users can read all profiles" ON "public"."profiles" FOR SELECT USING (("public"."is_elevated"("auth"."uid"()) OR ("id" = "auth"."uid"())));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."asset_types" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."assets" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."departments" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."disposed" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."employees" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."locations" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."sections" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."stock" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."sub_locations" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."table_permissions" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."transfer_history" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
+
+
+
+CREATE POLICY "Superadmin can manage all" ON "public"."vendors" USING (("auth"."uid"() IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."role" = 'superadmin'::"text"))));
 
 
 
@@ -1416,6 +1559,12 @@ GRANT ALL ON FUNCTION "public"."is_admin"("uid" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "public"."is_admin_or_manager"() TO "anon";
 GRANT ALL ON FUNCTION "public"."is_admin_or_manager"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_admin_or_manager"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_elevated"("uid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_elevated"("uid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_elevated"("uid" "uuid") TO "service_role";
 
 
 

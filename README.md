@@ -156,6 +156,23 @@ This will create a `build` directory with the production build of your app.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## Recent Updates
+
+### July 2025
+- **Hostname field** added to Assets table and UI (CRUD + filters + reports).
+- Cascading filters on Assets & Reports pages:
+  - Location → Sub-Location
+  - Department → Section
+  - Make → Model
+- New **Disposed Assets** section and report.
+- Transfer History report with advanced filters and CSV export.
+- Sections & Sub-Locations master-data CRUD pages added.
+- `useDepartments` hook restored; all master-data hooks follow identical pattern.
+- Supabase auth trigger functions now set `username` (part before `@`) in `profiles` table and keep it in sync.
+- Local development now defaults to `http://127.0.0.1:54321` Supabase dev stack; update `frontend/src/supabaseClient.js` if you use a remote project.
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
